@@ -1,0 +1,155 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git status)",
+      "Bash(git status *)",
+      "Bash(git diff)",
+      "Bash(git diff *)",
+      "Bash(git log)",
+      "Bash(git log *)",
+      "Bash(git branch)",
+      "Bash(git branch --list *)",
+      "Bash(git show *)",
+      "Bash(git blame *)",
+      "Bash(bash scripts/check.sh)",
+      "Bash(bash scripts/check.sh *)",
+      "Bash(python3 scripts/check_secrets.py *)",
+      "Bash(npm test)",
+      "Bash(npm run test)",
+      "Bash(npm run lint)",
+      "Bash(npm run typecheck)",
+      "Bash(npm run build)",
+      "Bash(pnpm test)",
+      "Bash(pnpm run *)",
+      "Bash(pytest)",
+      "Bash(pytest *)",
+      "Bash(ruff check *)",
+      "Bash(python3 -m unittest *)",
+      "Bash(ls)",
+      "Bash(ls *)",
+      "Bash(pwd)",
+      "Bash(which *)",
+      "Bash(node --version)",
+      "Bash(python3 --version)"
+    ],
+    "ask": [
+      "Bash(git push)",
+      "Bash(git push *)",
+      "Bash(git reset --hard *)",
+      "Bash(git clean *)",
+      "Bash(git branch -D *)",
+      "Bash(git branch -d *)",
+      "Bash(rm *)",
+      "Bash(sudo *)",
+      "Bash(curl *)",
+      "Bash(wget *)",
+      "Bash(npm publish *)",
+      "Bash(docker *)",
+      "Bash(gh release *)",
+      "Bash(gh pr merge *)",
+      "Bash(vercel *)",
+      "Bash(kubectl *)",
+      "Bash(terraform *)"
+    ],
+    "deny": [
+      "Read(./.env)",
+      "Read(./.env.local)",
+      "Read(./.env.development)",
+      "Read(./.env.development.local)",
+      "Read(./.env.test)",
+      "Read(./.env.test.local)",
+      "Read(./.env.staging)",
+      "Read(./.env.production)",
+      "Read(./.env.production.local)",
+      "Read(./**/.env)",
+      "Read(./**/.env.local)",
+      "Read(./**/.env.production)",
+      "Read(./**/*.pem)",
+      "Read(./**/*.key)",
+      "Read(./**/credentials.json)",
+      "Read(./**/id_rsa)",
+      "Read(./**/id_ed25519)",
+      "Bash(rm -rf /)",
+      "Bash(rm -rf /*)",
+      "Bash(rm -rf ~)",
+      "Bash(rm -rf ~/*)",
+      "Bash(rm -rf .git)",
+      "Bash(git push --force *)",
+      "Bash(git push -f *)",
+      "Bash(export *&& curl *)",
+      "Bash(export *;curl *)",
+      "Bash(chmod 777 *)",
+      "Bash(chmod -R 777 *)"
+    ]
+  },
+  "hooks": {
+    "PreToolUse": [
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/scripts/hooks/guard.py\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|MultiEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/scripts/hooks/format.py\"",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "UserPromptSubmit": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/scripts/hooks/prompt_context.py\"",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "python3 \"$CLAUDE_PROJECT_DIR/scripts/hooks/session_start.py\"",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "afplay /System/Library/Sounds/Glass.aiff 2>/dev/null || powershell.exe -c \"[console]::beep(1000,200)\" 2>/dev/null || printf '\\a'; true",
+            "timeout": 5
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "afplay /System/Library/Sounds/Ping.aiff 2>/dev/null || powershell.exe -c \"[console]::beep(800,150)\" 2>/dev/null || printf '\\a'; true",
+            "timeout": 5
+          }
+        ]
+      }
+    ]
+  }
+}

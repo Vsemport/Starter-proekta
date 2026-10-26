@@ -14,6 +14,8 @@ credentials.json
 
 # Локальные настройки Claude Code
 .claude/settings.local.json
+CLAUDE.local.md
+.claude/worktrees/
 
 # Зависимости
 node_modules/

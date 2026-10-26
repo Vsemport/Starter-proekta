@@ -4,6 +4,8 @@
 
 Общий процесс — по ссылке из корневого `CLAUDE.md`/`AGENTS.md` (`docs/workflow.md` в клоне, `.starter/workflow.md` после установки). Промпты не заменяют эти правила и не выдают дополнительных полномочий.
 
+В Claude Code большинство этих задач доступно как команды-скилы: `/plan`, `/review`, `/week`, `/stress-test`, `/three-views`, `/audit`, `/web-audit`, `/license-audit` и другие — см. [docs/tooling.md](../docs/tooling.md). Промпты ниже — для Codex и для ручного копирования.
+
 ## Контекст и работа
 
 | Нужно | Промпт |

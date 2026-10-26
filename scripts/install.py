@@ -21,6 +21,12 @@ COPIES = ('plans/README.md', 'plans/TEMPLATE.md',
           'retrospectives/README.md', 'retrospectives/TEMPLATE.md')
 CONTEXT = ('.business', 'business', 'idea', 'ideas', 'architecture', 'idea.md', 'IDEA.md',
            'business.md', 'BUSINESS.md')
+# --with-claude: Claude Code assets copied only when missing. Settings are never written.
+CLAUDE_DIRS = ('.claude/agents', '.claude/skills', '.claude/rules', 'scripts/hooks')
+CLAUDE_FILES = ('scripts/check.sh', 'docs/stack.md', 'docs/conventions.md', 'docs/tooling.md',
+                'docs/decisions/README.md', 'docs/decisions/TEMPLATE.md',
+                'specs/README.md', 'specs/TEMPLATE.md', '.github/PULL_REQUEST_TEMPLATE.md')
+SKIP_NAMES = ('__pycache__', '.DS_Store')
 
 
 class InstallError(Exception):
@@ -94,7 +100,24 @@ def tracked_business(target):
                            'No files have been untracked.')
 
 
-def plan_install(source, target, agent):
+def claude_assets(source):
+    """Relative paths of Claude Code assets in the source checkout; validated before any write."""
+    relatives = []
+    for directory in CLAUDE_DIRS:
+        base = source / directory
+        if not base.is_dir():
+            raise InstallError(f'Source is missing Claude assets: {base}')
+        for path in sorted(base.rglob('*')):
+            if path.is_file() and not any(part in SKIP_NAMES for part in path.relative_to(source).parts):
+                relatives.append(path.relative_to(source).as_posix())
+    for name in CLAUDE_FILES:
+        if not (source / name).is_file():
+            raise InstallError(f'Source is missing Claude asset: {source / name}')
+        relatives.append(name)
+    return relatives
+
+
+def plan_install(source, target, agent, with_claude=False):
     safe_path(target)
     if not target.is_dir():
         raise InstallError(f'Target must be an existing directory: {target}')
@@ -102,6 +125,12 @@ def plan_install(source, target, agent):
     names = ['CLAUDE.md'] if agent == 'claude' else ['AGENTS.md'] if agent == 'codex' else ['CLAUDE.md', 'AGENTS.md']
     sources = {name: source_text(source / name) for name in ('docs/workflow.md', *COPIES)}
     sources.update({name: source_text(source / 'templates' / (name + '.tmpl')) for name in names})
+    assets = claude_assets(source) if with_claude else []
+    executables = set()
+    for name in assets:
+        sources[name] = source_text(source / name)
+        if os.access(source / name, os.X_OK):
+            executables.add(target / name)
     for name in names:
         if b'.starter/workflow.md' not in sources[name]:
             raise InstallError(f'Source router must link to .starter/workflow.md: {name}')
@@ -142,6 +171,8 @@ def plan_install(source, target, agent):
     add('.starter/workflow.md', sources['docs/workflow.md'], 'exact')
     for name in COPIES:
         add(name, sources[name])
+    for name in assets:
+        add(name, sources[name])
     for name in names:
         path = target / name
         safe_path(path)
@@ -151,7 +182,8 @@ def plan_install(source, target, agent):
             continue
         payload = sources[name].rstrip() + b'\n'
         add(name, managed(existing, payload, path), 'replace')
-    return actions, found
+    executables = {path for path, old, _ in actions if path in executables and old is None}
+    return actions, found, executables
 
 
 def apply_plan(actions):
@@ -178,21 +210,28 @@ def main(argv=None):
     parser.add_argument('path', metavar='PATH', help='existing project directory')
     parser.add_argument('--apply', action='store_true', help='write the validated plan')
     parser.add_argument('--agent', choices=('claude', 'codex', 'both'), default='both')
+    parser.add_argument('--with-claude', action='store_true',
+                        help='also copy missing Claude Code assets: agents, skills, rules, hooks, check.sh, doc templates')
     args = parser.parse_args(argv)
     try:
         # abspath intentionally does not resolve links before the symlink check.
         target = Path(os.path.abspath(os.path.expanduser(args.path)))
         source = Path(__file__).absolute().parent.parent
-        actions, context = plan_install(source, target, args.agent)
+        actions, context, executables = plan_install(source, target, args.agent, args.with_claude)
         print('Apply plan:' if args.apply else 'Dry-run (no files or directories written):')
         for path, old, _ in actions:
             print(f'  {"create" if old is None else "append/update"}: {path.relative_to(target)}')
         print('Existing context references (not copied): ' + ', '.join(context))
         if args.apply:
             apply_plan(actions)
+            for path in executables:
+                os.chmod(path, path.stat().st_mode | 0o111)
             print(f'Applied {len(actions)} file changes. No settings or Git index changed.')
         elif not actions:
             print('No changes needed.')
+        if args.with_claude:
+            print('Claude Code settings were not written: review templates/claude-settings.json.example '
+                  'and merge it into .claude/settings.json yourself.')
         return 0
     except (InstallError, OSError) as exc:
         print(f'Error: {exc}', file=sys.stderr)
